@@ -6,15 +6,16 @@ Aplikasi internal chat berbasis web untuk komunikasi 1-on-1 antar pengguna yang 
 
 ## Tech Stack & Infrastruktur
 
-
-| Next.js 16    | Framework aplikasi web   | Mendukung frontend dan API dalam satu project serta routing berbasis App Router |
-| TypeScript    | Bahasa pemrograman       | Memberikan type checking sehingga kode lebih aman dan mudah dipelihara |
-| Tailwind CSS  | Styling UI               | Memudahkan pembuatan UI yang konsisten dan responsive |
-| Prisma ORM    | Database ORM             | Mempermudah pengelolaan database, query, dan relasi antar tabel |
-| MySQL         | Database                 | Digunakan untuk menyimpan data pengguna, percakapan, dan pesan |
-| bcryptjs      | Password hashing         | Mengamankan password pengguna sebelum disimpan ke database |
-| Laragon       | Local development        | Menyediakan environment lokal untuk menjalankan aplikasi dan MySQL |
-| GitHub        | Version control          | Menyimpan source code dan mengelola perubahan project |
+| Teknologi | Penggunaan | Alasan |
+|---|---|---|
+| Next.js 16 | Framework aplikasi web | Mendukung frontend dan API dalam satu project serta routing berbasis App Router |
+| TypeScript | Bahasa pemrograman | Memberikan type checking sehingga kode lebih aman dan mudah dipelihara |
+| Tailwind CSS | Styling UI | Memudahkan pembuatan UI yang konsisten dan responsive |
+| Prisma ORM | Database ORM | Mempermudah pengelolaan database, query, dan relasi antar tabel |
+| MySQL | Database | Digunakan untuk menyimpan data pengguna, percakapan, dan pesan |
+| bcryptjs | Password hashing | Mengamankan password pengguna sebelum disimpan ke database |
+| Laragon | Local development | Menyediakan environment lokal untuk menjalankan aplikasi dan MySQL |
+| GitHub | Version control | Menyimpan source code dan mengelola perubahan project |
 
 ## Fitur
 
@@ -157,9 +158,7 @@ Beberapa bagian yang masih dapat dikembangkan:
 * Deployment production.
 * Pengembangan fitur tambahan seperti group chat, attachment file, dan profil pengguna.
 
-Saat ini pembaruan pesan menggunakan mekanisme polling secara berkala.
-
-belum menggunakan WebSocket**. `ChatRoom.tsx` masih melakukan polling setiap 3 detik:
+Saat ini pembaruan pesan menggunakan mekanisme polling secara berkala. belum menggunakan WebSocket. `ChatRoom.tsx` masih melakukan polling setiap 3 detik:
 
 ```text
 loadMessages()
