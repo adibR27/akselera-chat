@@ -1,12 +1,24 @@
+import "dotenv/config";
+
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not defined");
+}
+
+const parsedUrl = new URL(databaseUrl);
+
 const adapter = new PrismaMariaDb({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "akselera_chat",
-  port: 3306,
+  host: parsedUrl.hostname,
+  port: Number(parsedUrl.port) || 3306,
+  user: decodeURIComponent(parsedUrl.username),
+  password: decodeURIComponent(parsedUrl.password),
+  database: parsedUrl.pathname.replace(/^\//, ""),
+  connectionLimit: 5,
+  connectTimeout: 10_000,
 });
 
 const globalForPrisma = globalThis as unknown as {
@@ -15,7 +27,9 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({ adapter });
+  new PrismaClient({
+    adapter,
+  });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
