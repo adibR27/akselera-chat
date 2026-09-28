@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
+
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 import "./globals.css";
 
 const nunito = Nunito({
   variable: "--font-nunito",
   subsets: ["latin"],
-  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Akselera.Tech",
-  description: "Akselera Internal Chat",
+  description: "Akselera.Tech Internal Chat",
 };
 
 export default function RootLayout({
@@ -19,9 +21,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body className={`${nunito.variable} antialiased`}>
-        {children}
+    <html
+      lang="id"
+      suppressHydrationWarning
+    >
+      <body
+        className={`
+          ${nunito.variable}
+          antialiased
+        `}
+      >
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

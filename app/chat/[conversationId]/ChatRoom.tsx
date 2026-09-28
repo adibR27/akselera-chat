@@ -2,12 +2,17 @@
 
 import {
   FormEvent,
+  useCallback,
   useEffect,
   useState,
 } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import LogoutButton from "../logout-button";
+import ThemeToggle from "../../ThemeToggle";
 
 type User = {
   id: number;
@@ -60,76 +65,47 @@ export default function ChatRoom({
   const router = useRouter();
 
   const [messages, setMessages] = useState<Message[]>([]);
-
-  const [conversations, setConversations] =
-    useState<Conversation[]>([]);
-
+  const [conversations, setConversations] = useState<Conversation[]>(
+    []
+  );
   const [content, setContent] = useState("");
-
   const [loading, setLoading] = useState(true);
-
-  const [
-    loadingConversations,
-    setLoadingConversations,
-  ] = useState(true);
-
+  const [loadingConversations, setLoadingConversations] =
+    useState(true);
   const [sending, setSending] = useState(false);
-
   const [error, setError] = useState("");
-
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   /*
    * =========================================================
    * LOAD CONVERSATIONS
    * =========================================================
-   *
-   * showLoading = true
-   * hanya digunakan saat pertama kali mengambil data.
-   *
-   * showLoading = false
-   * digunakan saat polling agar sidebar tidak berkedip.
    */
 
-  async function loadConversations(
-    showLoading = false
-  ) {
+  const loadConversations = useCallback(async () => {
     try {
-      if (showLoading) {
-        setLoadingConversations(true);
-      }
-
-      const response = await fetch(
-        "/api/conversations",
-        {
-          cache: "no-store",
-        }
-      );
+      const response = await fetch("/api/conversations", {
+        cache: "no-store",
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
-            "Gagal mengambil percakapan."
+          data.message || "Gagal mengambil percakapan."
         );
       }
 
-      setConversations(
-        data.conversations ?? []
-      );
+      setConversations(data.conversations ?? []);
     } catch (error) {
       console.error(
         "Load conversations error:",
         error
       );
     } finally {
-      if (showLoading) {
-        setLoadingConversations(false);
-      }
+      setLoadingConversations(false);
     }
-  }
+  }, []);
 
   /*
    * =========================================================
@@ -137,14 +113,8 @@ export default function ChatRoom({
    * =========================================================
    */
 
-  async function loadMessages(
-    showLoading = true
-  ) {
+  const loadMessages = useCallback(async () => {
     try {
-      if (showLoading) {
-        setLoading(true);
-      }
-
       const response = await fetch(
         `/api/conversations/${conversationId}/messages`,
         {
@@ -156,24 +126,15 @@ export default function ChatRoom({
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
-            "Gagal mengambil pesan."
+          data.message || "Gagal mengambil pesan."
         );
       }
-
-      /*
-       * Ambil messages dari API.
-       */
 
       const newMessages: Message[] =
         data.messages ?? [];
 
       /*
        * Pastikan message ID unik.
-       *
-       * Ini mencegah error:
-       *
-       * Encountered two children with the same key
        */
 
       const uniqueMessages = Array.from(
@@ -186,7 +147,6 @@ export default function ChatRoom({
       );
 
       setMessages(uniqueMessages);
-
       setError("");
     } catch (error) {
       console.error(
@@ -200,23 +160,19 @@ export default function ChatRoom({
           : "Gagal mengambil pesan."
       );
     } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  }
+  }, [conversationId]);
 
   /*
    * =========================================================
    * INITIAL LOAD CONVERSATIONS
    * =========================================================
-   *
-   * Hanya menampilkan loading pada initial load.
    */
 
   useEffect(() => {
-    loadConversations(true);
-  }, [conversationId]);
+    void loadConversations();
+  }, [loadConversations, conversationId]);
 
   /*
    * =========================================================
@@ -228,37 +184,24 @@ export default function ChatRoom({
    * - refresh messages
    * - refresh conversations
    *
-   * Tetapi TIDAK mengaktifkan loading sidebar.
-   *
-   * Ini yang mencegah sidebar kelap-kelip.
+   * Tidak menampilkan loading ulang pada sidebar.
    */
 
   useEffect(() => {
-    loadMessages(true);
+    void loadMessages();
 
     const interval = setInterval(() => {
-      loadMessages(false);
-
-      /*
-       * Jangan gunakan true di sini.
-       *
-       * true akan membuat:
-       *
-       * loadingConversations = true
-       *
-       * sehingga sidebar berubah menjadi
-       * "Memuat percakapan..."
-       *
-       * dan menyebabkan flicker.
-       */
-
-      loadConversations(false);
+      void loadMessages();
+      void loadConversations();
     }, 3000);
 
     return () => {
       clearInterval(interval);
     };
-  }, [conversationId]);
+  }, [
+    loadConversations,
+    loadMessages,
+  ]);
 
   /*
    * =========================================================
@@ -285,23 +228,21 @@ export default function ChatRoom({
       setSending(true);
       setError("");
 
-      const response =
-        await fetch(
-          `/api/conversations/${conversationId}/messages`,
-          {
-            method: "POST",
+      const response = await fetch(
+        `/api/conversations/${conversationId}/messages`,
+        {
+          method: "POST",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-            body: JSON.stringify({
-              content:
-                messageContent,
-            }),
-          }
-        );
+          body: JSON.stringify({
+            content: messageContent,
+          }),
+        }
+      );
 
       const data =
         await response.json();
@@ -313,13 +254,8 @@ export default function ChatRoom({
         );
       }
 
-      const newMessage:
-        Message = data.message;
-
-      /*
-       * Pastikan message yang baru
-       * belum ada di state.
-       */
+      const newMessage: Message =
+        data.message;
 
       setMessages(
         (currentMessages) => {
@@ -343,14 +279,7 @@ export default function ChatRoom({
 
       setContent("");
 
-      /*
-       * Update sidebar setelah
-       * berhasil mengirim pesan.
-       *
-       * Tidak menampilkan loading.
-       */
-
-      await loadConversations(false);
+      await loadConversations();
     } catch (error) {
       console.error(
         "Send message error:",
@@ -382,9 +311,7 @@ export default function ChatRoom({
       return;
     }
 
-    router.push(
-      `/chat/${id}`
-    );
+    router.push(`/chat/${id}`);
   }
 
   /*
@@ -416,6 +343,9 @@ export default function ChatRoom({
         bg-[#f5f5f5]
         text-black
         font-[var(--font-nunito)]
+
+        dark:bg-gray-950
+        dark:text-white
       "
     >
       <div className="relative flex h-full w-full">
@@ -460,6 +390,9 @@ export default function ChatRoom({
             transition-transform
             duration-200
 
+            dark:border-gray-800
+            dark:bg-gray-900
+
             md:static
             md:w-[350px]
             md:translate-x-0
@@ -471,6 +404,7 @@ export default function ChatRoom({
             }
           `}
         >
+
           {/* =================================================
               LOGO
           ================================================= */}
@@ -486,58 +420,86 @@ export default function ChatRoom({
               px-5
               py-5
               md:px-6
+
+              dark:border-gray-800
             "
           >
-            <div>
-              <h1
-                className="
-                  text-xl
-                  font-extrabold
-                  tracking-tight
-                  text-black
-                "
-              >
-                Akselera.Tech
-              </h1>
+            <div className="flex min-w-0 items-center">
 
-              <p
+              {/* Light Mode Logo */}
+
+              <Image
+                src="/images/akselera-logo-dark.png"
+                alt="Akselera.Tech"
+                width={260}
+                height={100}
+                priority
                 className="
-                  mt-0.5
-                  text-xs
-                  font-semibold
-                  text-gray-500
+                  h-auto
+                  w-[180px]
+                  dark:hidden
                 "
-              >
-                Internal Chat
-              </p>
+              />
+
+              {/* Dark Mode Logo */}
+
+              <Image
+                src="/images/akselera-logo-light.png"
+                alt="Akselera.Tech"
+                width={260}
+                height={100}
+                priority
+                className="
+                  hidden
+                  h-auto
+                  w-[180px]
+                  dark:block
+                "
+              />
+
             </div>
 
-            {/* Mobile close */}
+            <div className="flex shrink-0 items-center gap-2">
 
-            <button
-              type="button"
-              onClick={() =>
-                setSidebarOpen(false)
-              }
-              className="
-                flex
-                h-9
-                w-9
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-black
-                text-lg
-                font-bold
-                text-black
-                hover:bg-black
-                hover:text-white
-                md:hidden
-              "
-            >
-              ×
-            </button>
+              <ThemeToggle />
+
+              {/* Mobile close */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSidebarOpen(false)
+                }
+                aria-label="Tutup sidebar"
+                className="
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-black
+                  text-lg
+                  font-bold
+                  text-black
+                  transition
+
+                  hover:bg-black
+                  hover:text-white
+
+                  dark:border-gray-700
+                  dark:text-white
+                  dark:hover:bg-white
+                  dark:hover:text-black
+
+                  md:hidden
+                "
+              >
+                ×
+              </button>
+
+            </div>
           </div>
 
           {/* =================================================
@@ -556,8 +518,14 @@ export default function ChatRoom({
                 bg-gray-50
                 px-4
                 py-3
+
                 focus-within:border-black
                 focus-within:bg-white
+
+                dark:border-gray-700
+                dark:bg-gray-800
+                dark:focus-within:border-white
+                dark:focus-within:bg-gray-800
               "
             >
               <svg
@@ -567,7 +535,11 @@ export default function ChatRoom({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                className="shrink-0 text-gray-500"
+                className="
+                  shrink-0
+                  text-gray-500
+                  dark:text-gray-400
+                "
               >
                 <circle
                   cx="11"
@@ -590,6 +562,9 @@ export default function ChatRoom({
                   text-black
                   outline-none
                   placeholder:text-gray-400
+
+                  dark:text-white
+                  dark:placeholder:text-gray-500
                 "
               />
             </div>
@@ -607,6 +582,7 @@ export default function ChatRoom({
                 uppercase
                 tracking-[0.15em]
                 text-gray-400
+                dark:text-gray-500
               "
             >
               Percakapan
@@ -618,23 +594,37 @@ export default function ChatRoom({
           ================================================= */}
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3">
+
             {loadingConversations ? (
               <div className="px-3 py-8 text-center">
-                <p className="text-sm font-semibold text-gray-400">
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                    text-gray-400
+                  "
+                >
                   Memuat percakapan...
                 </p>
               </div>
-            ) : conversations.length ===
-              0 ? (
+            ) : conversations.length === 0 ? (
               <div className="px-3 py-8 text-center">
-                <p className="text-sm font-semibold text-gray-400">
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                    text-gray-400
+                  "
+                >
                   Belum ada percakapan.
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
+
                 {conversations.map(
                   (conversation) => {
+
                     const isActive =
                       conversation.id ===
                       conversationId;
@@ -675,11 +665,12 @@ export default function ChatRoom({
 
                           ${
                             isActive
-                              ? "border-black bg-black text-white"
-                              : "border-transparent bg-white text-black hover:border-gray-300 hover:bg-gray-50"
+                              ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                              : "border-transparent bg-white text-black hover:border-gray-300 hover:bg-gray-50 dark:bg-gray-900 dark:text-white dark:hover:border-gray-700 dark:hover:bg-gray-800"
                           }
                         `}
                       >
+
                         {/* Avatar */}
 
                         <div
@@ -697,8 +688,8 @@ export default function ChatRoom({
 
                             ${
                               isActive
-                                ? "border-white bg-white text-black"
-                                : "border-black bg-black text-white"
+                                ? "border-white bg-white text-black dark:border-black dark:bg-black dark:text-white"
+                                : "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                             }
                           `}
                         >
@@ -710,7 +701,9 @@ export default function ChatRoom({
                         {/* Information */}
 
                         <div className="min-w-0 flex-1">
+
                           <div className="flex items-center justify-between gap-2">
+
                             <p
                               className={`
                                 truncate
@@ -718,8 +711,8 @@ export default function ChatRoom({
 
                                 ${
                                   isActive
-                                    ? "font-extrabold text-white"
-                                    : "font-bold text-black"
+                                    ? "font-extrabold text-white dark:text-black"
+                                    : "font-bold text-black dark:text-white"
                                 }
                               `}
                             >
@@ -739,7 +732,7 @@ export default function ChatRoom({
 
                                   ${
                                     isActive
-                                      ? "text-gray-300"
+                                      ? "text-gray-300 dark:text-gray-600"
                                       : "text-gray-400"
                                   }
                                 `}
@@ -751,9 +744,11 @@ export default function ChatRoom({
                                 )}
                               </span>
                             )}
+
                           </div>
 
                           <div className="mt-0.5 flex items-center gap-2">
+
                             <p
                               className={`
                                 min-w-0
@@ -764,8 +759,8 @@ export default function ChatRoom({
 
                                 ${
                                   isActive
-                                    ? "text-gray-300"
-                                    : "text-gray-500"
+                                    ? "text-gray-300 dark:text-gray-600"
+                                    : "text-gray-500 dark:text-gray-400"
                                 }
                               `}
                             >
@@ -776,12 +771,9 @@ export default function ChatRoom({
                                 : "Belum ada pesan"}
                             </p>
 
-                            {/* =================================================
-                                UNREAD BADGE
-                            ================================================== */}
+                            {/* Unread Badge */}
 
-                            {unreadCount >
-                              0 && (
+                            {unreadCount > 0 && (
                               <span
                                 className="
                                   flex
@@ -797,22 +789,28 @@ export default function ChatRoom({
                                   font-extrabold
                                   leading-none
                                   text-white
+
+                                  dark:bg-white
+                                  dark:text-black
                                 "
                               >
-                                {unreadCount >
-                                99
+                                {unreadCount > 99
                                   ? "99+"
                                   : unreadCount}
                               </span>
                             )}
+
                           </div>
+
                         </div>
                       </button>
                     );
                   }
                 )}
+
               </div>
             )}
+
           </div>
 
           {/* =================================================
@@ -825,6 +823,8 @@ export default function ChatRoom({
               border-t
               border-black
               p-4
+
+              dark:border-gray-800
             "
           >
             <Link
@@ -845,7 +845,12 @@ export default function ChatRoom({
                 text-sm
                 font-extrabold
                 text-white
+                transition
                 hover:bg-gray-800
+
+                dark:bg-white
+                dark:text-black
+                dark:hover:bg-gray-200
               "
             >
               <span className="text-lg leading-none">
@@ -855,11 +860,29 @@ export default function ChatRoom({
               New Chat
             </Link>
           </div>
+
+          {/* =================================================
+              LOGOUT
+          ================================================= */}
+
+          <div
+            className="
+              shrink-0
+              border-t
+              border-black
+              p-4
+
+              dark:border-gray-800
+            "
+          >
+            <LogoutButton />
+          </div>
+
         </aside>
 
         {/* =====================================================
             MAIN CHAT
-        ====================================================== */}
+        ===================================================== */}
 
         <section
           className="
@@ -868,8 +891,11 @@ export default function ChatRoom({
             flex-1
             flex-col
             bg-[#f5f5f5]
+
+            dark:bg-gray-950
           "
         >
+
           {/* =================================================
               HEADER
           ================================================= */}
@@ -886,8 +912,12 @@ export default function ChatRoom({
               bg-white
               px-4
               sm:px-6
+
+              dark:border-gray-800
+              dark:bg-gray-900
             "
           >
+
             {/* Mobile menu */}
 
             <button
@@ -907,8 +937,16 @@ export default function ChatRoom({
                 border
                 border-black
                 text-black
+                transition
+
                 hover:bg-black
                 hover:text-white
+
+                dark:border-gray-700
+                dark:text-white
+                dark:hover:bg-white
+                dark:hover:text-black
+
                 md:hidden
               "
             >
@@ -942,9 +980,18 @@ export default function ChatRoom({
                 border-gray-300
                 text-lg
                 text-black
+                transition
+
                 hover:border-black
                 hover:bg-black
                 hover:text-white
+
+                dark:border-gray-700
+                dark:text-white
+                dark:hover:border-white
+                dark:hover:bg-white
+                dark:hover:text-black
+
                 sm:flex
               "
             >
@@ -966,6 +1013,9 @@ export default function ChatRoom({
                 text-sm
                 font-extrabold
                 text-white
+
+                dark:bg-white
+                dark:text-black
               "
             >
               {otherUser.name
@@ -976,12 +1026,16 @@ export default function ChatRoom({
             {/* User */}
 
             <div className="min-w-0 flex-1">
+
               <h2
                 className="
                   truncate
                   text-sm
                   font-extrabold
                   text-black
+
+                  dark:text-white
+
                   md:text-base
                 "
               >
@@ -994,11 +1048,15 @@ export default function ChatRoom({
                   text-xs
                   font-semibold
                   text-gray-500
+
+                  dark:text-gray-400
                 "
               >
                 {otherUser.email}
               </p>
+
             </div>
+
           </header>
 
           {/* =================================================
@@ -1016,16 +1074,24 @@ export default function ChatRoom({
               sm:py-7
             "
           >
+
             {loading ? (
               <div className="flex h-full items-center justify-center">
-                <p className="text-sm font-semibold text-gray-400">
+                <p
+                  className="
+                    text-sm
+                    font-semibold
+                    text-gray-400
+                  "
+                >
                   Memuat pesan...
                 </p>
               </div>
-            ) : messages.length ===
-              0 ? (
+            ) : messages.length === 0 ? (
               <div className="flex h-full items-center justify-center">
+
                 <div className="text-center">
+
                   <div
                     className="
                       mx-auto
@@ -1040,26 +1106,48 @@ export default function ChatRoom({
                       border-black
                       bg-white
                       text-xl
+
+                      dark:border-gray-700
+                      dark:bg-gray-900
                     "
                   >
                     💬
                   </div>
 
-                  <p className="text-sm font-extrabold text-black">
+                  <p
+                    className="
+                      text-sm
+                      font-extrabold
+                      text-black
+
+                      dark:text-white
+                    "
+                  >
                     Belum ada pesan
                   </p>
 
-                  <p className="mt-1 text-xs font-semibold text-gray-400">
+                  <p
+                    className="
+                      mt-1
+                      text-xs
+                      font-semibold
+                      text-gray-400
+                    "
+                  >
                     Mulai percakapan
                     dengan{" "}
                     {otherUser.name}.
                   </p>
+
                 </div>
+
               </div>
             ) : (
               <div className="mx-auto w-full max-w-4xl space-y-4">
+
                 {messages.map(
                   (message) => {
+
                     const isMine =
                       message.senderId ===
                       currentUserId;
@@ -1075,6 +1163,7 @@ export default function ChatRoom({
                             : "justify-start"
                         }`}
                       >
+
                         <div
                           className={`
                             max-w-[85%]
@@ -1084,11 +1173,12 @@ export default function ChatRoom({
 
                             ${
                               isMine
-                                ? "rounded-2xl rounded-br-md bg-black text-white"
-                                : "rounded-2xl rounded-bl-md border border-gray-300 bg-white text-black"
+                                ? "rounded-2xl rounded-br-md bg-black text-white dark:bg-white dark:text-black"
+                                : "rounded-2xl rounded-bl-md border border-gray-300 bg-white text-black dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                             }
                           `}
                         >
+
                           <p
                             className="
                               whitespace-pre-wrap
@@ -1104,12 +1194,18 @@ export default function ChatRoom({
                           </p>
 
                           <div className="mt-1 flex items-center justify-end gap-1">
+
                             <p
-                              className="
+                              className={`
                                 text-[10px]
                                 font-semibold
-                                text-gray-400
-                              "
+
+                                ${
+                                  isMine
+                                    ? "text-gray-400 dark:text-gray-500"
+                                    : "text-gray-400 dark:text-gray-500"
+                                }
+                              `}
                             >
                               {formatTime(
                                 message.createdAt
@@ -1126,7 +1222,7 @@ export default function ChatRoom({
 
                                   ${
                                     message.readAt
-                                      ? "text-white"
+                                      ? "text-white dark:text-black"
                                       : "text-gray-500"
                                   }
                                 `}
@@ -1136,14 +1232,19 @@ export default function ChatRoom({
                                   : "✓"}
                               </span>
                             )}
+
                           </div>
+
                         </div>
+
                       </div>
                     );
                   }
                 )}
+
               </div>
             )}
+
           </div>
 
           {/* =================================================
@@ -1163,6 +1264,10 @@ export default function ChatRoom({
                 font-bold
                 text-black
                 sm:px-6
+
+                dark:border-gray-800
+                dark:bg-gray-900
+                dark:text-white
               "
             >
               {error}
@@ -1182,8 +1287,12 @@ export default function ChatRoom({
               bg-white
               p-3
               sm:p-4
+
+              dark:border-gray-800
+              dark:bg-gray-900
             "
           >
+
             <div
               className="
                 mx-auto
@@ -1197,8 +1306,12 @@ export default function ChatRoom({
                 border-black
                 bg-white
                 p-2
+
+                dark:border-gray-700
+                dark:bg-gray-800
               "
             >
+
               <input
                 type="text"
                 value={content}
@@ -1219,6 +1332,9 @@ export default function ChatRoom({
                   text-black
                   outline-none
                   placeholder:text-gray-400
+
+                  dark:text-white
+                  dark:placeholder:text-gray-500
                 "
                 disabled={sending}
               />
@@ -1242,16 +1358,25 @@ export default function ChatRoom({
                   text-lg
                   font-bold
                   text-white
+                  transition
                   hover:bg-gray-800
                   disabled:cursor-not-allowed
                   disabled:opacity-30
+
+                  dark:bg-white
+                  dark:text-black
+                  dark:hover:bg-gray-200
                 "
               >
                 ↑
               </button>
+
             </div>
+
           </form>
+
         </section>
+
       </div>
     </main>
   );
