@@ -14,73 +14,145 @@ export async function GET(
   { params }: Params
 ) {
   try {
-    const userId = await getCurrentUserId();
+    const userId =
+      await getCurrentUserId();
 
     if (!userId) {
       return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 }
+        {
+          message: "Unauthorized.",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
-    const { conversationId } = await params;
-    const id = Number(conversationId);
+    const { conversationId } =
+      await params;
+
+    const id = Number(
+      conversationId
+    );
 
     if (!Number.isInteger(id)) {
       return NextResponse.json(
-        { message: "Conversation ID tidak valid." },
-        { status: 400 }
+        {
+          message:
+            "Conversation ID tidak valid.",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    const conversation = await prisma.conversation.findFirst({
-      where: {
-        id,
-        OR: [
-          { user1Id: userId },
-          { user2Id: userId },
-        ],
-      },
-    });
+    /*
+     * Pastikan user memang anggota
+     * conversation tersebut.
+     */
+    const conversation =
+      await prisma.conversation.findFirst({
+        where: {
+          id,
+
+          OR: [
+            {
+              user1Id: userId,
+            },
+            {
+              user2Id: userId,
+            },
+          ],
+        },
+      });
 
     if (!conversation) {
       return NextResponse.json(
-        { message: "Percakapan tidak ditemukan." },
-        { status: 404 }
+        {
+          message:
+            "Percakapan tidak ditemukan.",
+        },
+        {
+          status: 404,
+        }
       );
     }
 
-    const messages = await prisma.message.findMany({
+    /*
+     * Tandai pesan dari user lain
+     * sebagai sudah dibaca.
+     *
+     * Hanya pesan yang:
+     * - berada di conversation ini
+     * - bukan milik current user
+     * - readAt masih null
+     */
+    await prisma.message.updateMany({
       where: {
         conversationId: id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-          },
+
+        senderId: {
+          not: userId,
         },
+
+        readAt: null,
+      },
+
+      data: {
+        readAt: new Date(),
       },
     });
+
+    /*
+     * Ambil semua pesan setelah
+     * proses read status diperbarui.
+     */
+    const messages =
+      await prisma.message.findMany({
+        where: {
+          conversationId: id,
+        },
+
+        orderBy: {
+          createdAt: "asc",
+        },
+
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
 
     return NextResponse.json({
       conversation: {
         id: conversation.id,
-        user1Id: conversation.user1Id,
-        user2Id: conversation.user2Id,
+        user1Id:
+          conversation.user1Id,
+        user2Id:
+          conversation.user2Id,
       },
+
       messages,
     });
   } catch (error) {
-    console.error("Get messages error:", error);
+    console.error(
+      "Get messages error:",
+      error
+    );
 
     return NextResponse.json(
-      { message: "Terjadi kesalahan pada server." },
-      { status: 500 }
+      {
+        message:
+          "Terjadi kesalahan pada server.",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
@@ -90,26 +162,41 @@ export async function POST(
   { params }: Params
 ) {
   try {
-    const userId = await getCurrentUserId();
+    const userId =
+      await getCurrentUserId();
 
     if (!userId) {
       return NextResponse.json(
-        { message: "Unauthorized." },
-        { status: 401 }
+        {
+          message: "Unauthorized.",
+        },
+        {
+          status: 401,
+        }
       );
     }
 
-    const { conversationId } = await params;
-    const id = Number(conversationId);
+    const { conversationId } =
+      await params;
+
+    const id = Number(
+      conversationId
+    );
 
     if (!Number.isInteger(id)) {
       return NextResponse.json(
-        { message: "Conversation ID tidak valid." },
-        { status: 400 }
+        {
+          message:
+            "Conversation ID tidak valid.",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    const body = await request.json();
+    const body =
+      await request.json();
 
     const content =
       typeof body.content === "string"
@@ -118,50 +205,75 @@ export async function POST(
 
     if (!content) {
       return NextResponse.json(
-        { message: "Pesan tidak boleh kosong." },
-        { status: 400 }
+        {
+          message:
+            "Pesan tidak boleh kosong.",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
-    const conversation = await prisma.conversation.findFirst({
-      where: {
-        id,
-        OR: [
-          { user1Id: userId },
-          { user2Id: userId },
-        ],
-      },
-    });
+    const conversation =
+      await prisma.conversation.findFirst({
+        where: {
+          id,
+
+          OR: [
+            {
+              user1Id: userId,
+            },
+            {
+              user2Id: userId,
+            },
+          ],
+        },
+      });
 
     if (!conversation) {
       return NextResponse.json(
-        { message: "Percakapan tidak ditemukan." },
-        { status: 404 }
+        {
+          message:
+            "Percakapan tidak ditemukan.",
+        },
+        {
+          status: 404,
+        }
       );
     }
 
-    const message = await prisma.message.create({
-      data: {
-        conversationId: id,
-        senderId: userId,
-        content,
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
+    const message =
+      await prisma.message.create({
+        data: {
+          conversationId: id,
+          senderId: userId,
+          content,
+        },
+
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-    });
+      });
 
+    /*
+     * Update waktu conversation
+     * supaya conversation naik ke atas
+     * sidebar.
+     */
     await prisma.conversation.update({
       where: {
         id,
       },
+
       data: {
-        updatedAt: new Date(),
+        updatedAt:
+          new Date(),
       },
     });
 
@@ -169,11 +281,19 @@ export async function POST(
       message,
     });
   } catch (error) {
-    console.error("Send message error:", error);
+    console.error(
+      "Send message error:",
+      error
+    );
 
     return NextResponse.json(
-      { message: "Terjadi kesalahan pada server." },
-      { status: 500 }
+      {
+        message:
+          "Terjadi kesalahan pada server.",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

@@ -25,10 +25,14 @@ export default function ChatPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [search, setSearch] = useState("");
 
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [creatingChat, setCreatingChat] = useState<number | null>(null);
+  const [loadingConversations, setLoadingConversations] =
+    useState(true);
+  const [creatingChat, setCreatingChat] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     loadConversations();
@@ -104,7 +108,6 @@ export default function ChatPage() {
 
       await loadConversations();
 
-      // Langsung buka percakapan yang baru dibuat
       if (data.conversation?.id) {
         router.push(`/chat/${data.conversation.id}`);
       }
@@ -120,140 +123,295 @@ export default function ChatPage() {
     router.push(`/chat/${conversationId}`);
   }
 
-  return (
-    <main className="min-h-screen bg-gray-100 p-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between border-b pb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Akselera Chat
-              </h1>
+  const filteredConversations = conversations.filter(
+    (conversation) =>
+      conversation.user.name
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      conversation.user.email
+        .toLowerCase()
+        .includes(search.toLowerCase())
+  );
 
-              <p className="mt-1 text-sm text-gray-500">
-                Percakapan kamu
-              </p>
+  return (
+    <main className="min-h-screen bg-[#f7f7f7] text-gray-900">
+      <div className="flex min-h-screen">
+
+        {/* ================= SIDEBAR ================= */}
+        <aside className="flex w-full max-w-[360px] flex-col border-r border-gray-200 bg-white">
+
+          {/* Brand */}
+          <div className="border-b border-gray-200 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-extrabold tracking-tight text-black">
+                  Akselera<span className="text-gray-400">.Tech</span>
+                </h1>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Internal Chat
+                </p>
+              </div>
+
+              {/* Theme button — UI terlebih dahulu */}
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:bg-gray-100"
+                title="Theme"
+              >
+                ☼
+              </button>
+            </div>
+          </div>
+
+          {/* Search + New Chat */}
+          <div className="border-b border-gray-200 p-4">
+
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                ⌕
+              </span>
+
+              <input
+                type="text"
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+                placeholder="Search conversations..."
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white"
+              />
             </div>
 
             <button
+              type="button"
               onClick={handleNewChat}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
             >
-              + New Chat
+              <span className="text-lg leading-none">+</span>
+              Chat baru
             </button>
           </div>
 
-          {loadingConversations ? (
-            <div className="py-10 text-center text-sm text-gray-500">
-              Memuat percakapan...
-            </div>
-          ) : conversations.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-gray-500">
-                Belum ada percakapan.
-              </p>
+          {/* Conversation title */}
+          <div className="px-5 pb-2 pt-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Percakapan
+            </p>
+          </div>
 
-              <button
-                onClick={handleNewChat}
-                className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Mulai Chat Baru
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {conversations.map((conversation) => (
-                <div
-                  key={conversation.id}
-                  onClick={() =>
-                    openConversation(conversation.id)
-                  }
-                  className="flex cursor-pointer items-center gap-4 py-4 hover:bg-gray-50"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-600">
-                    {conversation.user.name
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
+          {/* Conversations */}
+          <div className="flex-1 overflow-y-auto px-3 pb-4">
 
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">
-                      {conversation.user.name}
-                    </p>
-
-                    <p className="truncate text-sm text-gray-500">
-                      {conversation.lastMessage
-                        ? conversation.lastMessage.content
-                        : "Belum ada pesan"}
-                    </p>
-                  </div>
+            {loadingConversations ? (
+              <div className="px-3 py-10 text-center text-sm text-gray-400">
+                Memuat percakapan...
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-xl">
+                  💬
                 </div>
-              ))}
+
+                <p className="mt-3 text-sm font-medium text-gray-700">
+                  {search
+                    ? "Percakapan tidak ditemukan"
+                    : "Belum ada percakapan"}
+                </p>
+
+                {!search && (
+                  <p className="mt-1 text-xs leading-5 text-gray-400">
+                    Mulai percakapan baru dengan anggota
+                    lainnya.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredConversations.map(
+                  (conversation) => (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() =>
+                        openConversation(conversation.id)
+                      }
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-gray-100"
+                    >
+                      {/* Avatar */}
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-sm font-bold text-white">
+                        {conversation.user.name
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+
+                      {/* Info */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {conversation.user.name}
+                          </p>
+
+                          {conversation.lastMessage && (
+                            <span className="shrink-0 text-[10px] text-gray-400">
+                              {new Date(
+                                conversation.lastMessage.createdAt
+                              ).toLocaleTimeString("id-ID", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          {conversation.lastMessage
+                            ? conversation.lastMessage.content
+                            : "Belum ada pesan"}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom user area */}
+          <div className="border-t border-gray-200 p-4">
+            <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black text-xs font-bold text-white">
+                U
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  Account
+                </p>
+
+                <p className="text-xs text-gray-400">
+                  Akselera User
+                </p>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        </aside>
+
+        {/* ================= EMPTY CHAT AREA ================= */}
+        <section className="hidden flex-1 items-center justify-center bg-[#fafafa] md:flex">
+          <div className="max-w-sm px-6 text-center">
+
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-black text-3xl text-white shadow-sm">
+              💬
+            </div>
+
+            <h2 className="mt-6 text-xl font-bold text-gray-900">
+              Pilih percakapan
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              Pilih percakapan dari daftar di sebelah kiri
+              atau mulai chat baru dengan pengguna lain.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="mt-6 rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
+            >
+              + Chat baru
+            </button>
+          </div>
+        </section>
       </div>
 
+      {/* ================= NEW CHAT MODAL ================= */}
       {showNewChat && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b p-5">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowNewChat(false);
+            }
+          }}
+        >
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  New Chat
+                <h2 className="text-lg font-bold text-gray-900">
+                  Chat baru
                 </h2>
 
-                <p className="text-sm text-gray-500">
-                  Pilih pengguna yang ingin diajak chat.
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Pilih pengguna untuk memulai percakapan.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setShowNewChat(false)}
-                className="text-xl text-gray-400 hover:text-gray-600"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-xl text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
               >
                 ×
               </button>
             </div>
 
-            <div className="max-h-80 overflow-y-auto p-3">
+            {/* Users */}
+            <div className="max-h-[420px] overflow-y-auto p-3">
               {loadingUsers ? (
-                <p className="py-8 text-center text-sm text-gray-500">
+                <div className="py-10 text-center text-sm text-gray-400">
                   Memuat pengguna...
-                </p>
+                </div>
               ) : users.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-500">
-                  Tidak ada pengguna lain.
-                </p>
+                <div className="py-10 text-center">
+                  <p className="text-sm font-medium text-gray-700">
+                    Tidak ada pengguna lain.
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Belum ada pengguna yang dapat diajak chat.
+                  </p>
+                </div>
               ) : (
-                users.map((user) => (
-                  <button
-                    key={user.id}
-                    onClick={() => createConversation(user.id)}
-                    disabled={creatingChat === user.id}
-                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-100 disabled:opacity-50"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-600">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
+                <div className="space-y-1">
+                  {users.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() =>
+                        createConversation(user.id)
+                      }
+                      disabled={
+                        creatingChat === user.id
+                      }
+                      className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-700">
+                        {user.name
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">
-                        {user.name}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {user.name}
+                        </p>
 
-                      <p className="text-sm text-gray-500">
-                        {user.email}
-                      </p>
-                    </div>
+                        <p className="truncate text-xs text-gray-500">
+                          {user.email}
+                        </p>
+                      </div>
 
-                    {creatingChat === user.id && (
-                      <span className="text-xs text-gray-500">
-                        Membuat...
-                      </span>
-                    )}
-                  </button>
-                ))
+                      {creatingChat === user.id && (
+                        <span className="text-xs text-gray-400">
+                          Membuat...
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
