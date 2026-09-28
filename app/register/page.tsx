@@ -1,9 +1,9 @@
 import Image from "next/image";
 
-import LoginForm from "./LoginForm";
+import RegisterForm from "./RegisterForm";
 import ThemeToggle from "../ThemeToggle";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <main
       className="
@@ -22,7 +22,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      {/* Login Card */}
+      {/* Register Card */}
       <div
         className="
           w-full
@@ -80,39 +80,12 @@ export default function LoginPage() {
               dark:text-gray-400
             "
           >
-            Silakan login untuk melanjutkan
+            Buat akun untuk menggunakan Akselera.Tech
           </p>
         </div>
 
-        {/* Login Form */}
-        <LoginForm />
-
-        {/* Register Link */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Belum punya akun?
-          </p>
-
-          <a
-            href="/register"
-            className="
-              mt-1
-              inline-block
-              text-sm
-              font-bold
-              text-black
-              underline
-              underline-offset-4
-              transition
-              hover:text-gray-600
-
-              dark:text-white
-              dark:hover:text-gray-300
-            "
-          >
-            Daftar sekarang
-          </a>
-        </div>
+        {/* Register Form */}
+        <RegisterForm />
       </div>
     </main>
   );
